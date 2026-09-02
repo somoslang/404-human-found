@@ -674,7 +674,7 @@ const boardPage=document.getElementById('boardPage');
 renderBoard(boardPage,20,null);
 
 /* ===== timer del turno ===== */
-const TURN_SECONDS=60;            /* duración de cada turno */
+const TURN_SECONDS=120;           /* duración de cada turno (pedido de People: 2 min) */
 const gsTimer=document.getElementById('gsTimer');
 let deadline=0,timerInt=0,roundWins=0,timeT=0;
 function fmtT(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
