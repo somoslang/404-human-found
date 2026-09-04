@@ -148,10 +148,11 @@ function render(){
 
 /* ===== placa (imagen del cliente con fallback de marca) ===== */
 const img=document.getElementById('placaimg');
+const PLACAS=['placa.png','placa.jpg'];let pi=0;
 img.onload=()=>{img.style.display='block';document.getElementById('placaFb').style.display='none';};
-img.onerror=()=>{img.style.display='none';document.getElementById('placaFb').style.display='flex';};
-img.src='placa.png?v='+Date.now();
-setInterval(()=>{img.src='placa.png?v='+Date.now();},10*60*1000); /* re-busca la placa cada 10 min */
+img.onerror=()=>{pi++;if(pi<PLACAS.length){img.src=PLACAS[pi]+'?v='+Date.now();}else{img.style.display='none';document.getElementById('placaFb').style.display='flex';}};
+img.src=PLACAS[0]+'?v='+Date.now();
+setInterval(()=>{pi=0;img.src=PLACAS[0]+'?v='+Date.now();},10*60*1000); /* re-busca la placa cada 10 min */
 
 /* ===== alternancia de vistas ===== */
 const vR=document.getElementById('vRank'),vP=document.getElementById('vPlaca');
