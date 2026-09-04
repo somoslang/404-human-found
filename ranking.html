@@ -108,6 +108,13 @@ const LS='hf404_scores_v1';
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 function load(){try{return JSON.parse(localStorage.getItem(LS)||'{}')||{}}catch(e){return{}}}
+
+/* Tabla de muestra (personajes del mazo): se ve solo hasta que juegue
+   la primera persona real. ?demo=0 la apaga, ?demo=1 la fuerza. */
+const DEMO=[['Satoshi N.',21],['Anonymous',17],['Steve J.',14],['Grace H.',11],
+  ['Jeff B.',9],['Elon M.',7],['Ada L.',5],['Bill G.',4]];
+const DEMO_MODE=Q.get('demo');
+
 function ranking(){
   const sc=load();
   return Object.entries(sc).map(([name,s])=>({name,lv:s.lv||0,played:s.played||0,t:s.t||''}))
@@ -116,7 +123,10 @@ function ranking(){
 function medal(i){return i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º';}
 
 function render(){
-  const r=ranking();
+  let r=ranking(),demo=false;
+  if((r.length===0&&DEMO_MODE!=='0')||DEMO_MODE==='1'){
+    r=DEMO.map(([name,lv])=>({name,lv,t:''}));demo=true;
+  }
   const rows=document.getElementById('rows'),foot=document.getElementById('foot');
   if(r.length===0){
     rows.innerHTML=`<div class="empty"><div class="big">“No hay respuestas sin buenas preguntas.”</div>
@@ -124,14 +134,16 @@ function render(){
     foot.innerHTML=`<span class="rk-cta">Jugá en el tótem 🧀</span>`;
     return;
   }
-  const last=r.slice().sort((a,b)=>(b.t||'').localeCompare(a.t||''))[0];
+  const last=demo?null:r.slice().sort((a,b)=>(b.t||'').localeCompare(a.t||''))[0];
   rows.innerHTML=r.slice(0,TOP).map((p,i)=>
     `<div class="brow top${i+1}${last&&p.name===last.name?' reciente':''}" style="animation-delay:${i*70}ms">
       <span class="rk">${medal(i)}</span><span class="nm">${esc(p.name)}</span>
       <span class="lv">Nivel ${p.lv}</span></div>`).join('');
-  foot.innerHTML=`<span>${r.length} ${r.length===1?'jugador':'jugadores'}</span>`+
-    (last&&last.t?`<span>· último en jugar: <b>${esc(last.name)}</b></span>`:'')+
-    `<span class="rk-cta">Sumate en el tótem 🧀</span>`;
+  foot.innerHTML=demo
+    ?`<span>Tabla de ejemplo · los primeros en jugar la estrenan</span><span class="rk-cta">Jugá en el tótem 🧀</span>`
+    :`<span>${r.length} ${r.length===1?'jugador':'jugadores'}</span>`+
+     (last&&last.t?`<span>· último en jugar: <b>${esc(last.name)}</b></span>`:'')+
+     `<span class="rk-cta">Sumate en el tótem 🧀</span>`;
 }
 
 /* ===== placa (imagen del cliente con fallback de marca) ===== */
