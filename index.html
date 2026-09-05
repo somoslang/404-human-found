@@ -708,13 +708,17 @@ function draw(){
   seen++;
   updateScore();
 }
-drawBtn.addEventListener('click',draw);
-skipBtn.addEventListener('click',draw);
+/* latido para la pantalla LED: "hay alguien jugando" */
+function beat(){try{localStorage.setItem('hf404_active',String(Date.now()));}catch(e){}}
+drawBtn.addEventListener('click',()=>{beat();draw();});
+skipBtn.addEventListener('click',()=>{beat();draw();});
 wonBtn.addEventListener('click',()=>{
   if(!currentPlayer)return;
   won++;roundWins++;
   const s=scores[currentPlayer]||(scores[currentPlayer]={lv:0,played:0});
   s.lv++;saveScores();syncPlayer(currentPlayer);
+  try{localStorage.setItem('hf404_lastwin',JSON.stringify({name:currentPlayer,lv:s.lv,ts:Date.now()}));}catch(e){}
+  beat();
   renderBoard(boardPage,20,null);
   updateScore();
   levelUp(s.lv);
@@ -815,7 +819,7 @@ function startTurn(){
   scores[currentPlayer].t=new Date().toISOString();
   scores[currentPlayer].played++;saveScores();syncPlayer(currentPlayer);
   roundWins=0;
-  showStep('play');draw();startTimer();
+  showStep('play');beat();draw();startTimer();
 }
 document.getElementById('againBtn').addEventListener('click',()=>{
   npInput.value='';npEmail.value='';document.getElementById('npExtra').value='';
