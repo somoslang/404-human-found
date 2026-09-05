@@ -709,7 +709,22 @@ function draw(){
   updateScore();
 }
 /* latido para la pantalla LED: "hay alguien jugando" */
-function beat(){try{localStorage.setItem('hf404_active',String(Date.now()));}catch(e){}}
+function beat(){try{localStorage.setItem('hf404_active',String(Date.now()));}catch(e){} publishState();}
+
+/* ===== FEED EN VIVO hacia la pantalla LED (relay ntfy.sh, sin cuentas) =====
+   Viajan SOLO nombres y niveles — nunca correos ni empresas. */
+const FEED_TOPIC='hf404-bigcheese-x7k2m9q4';
+let feedLastSent=0,feedWin=null;
+function publishState(force){
+  try{
+    const now=Date.now();
+    if(!force&&now-feedLastSent<3000)return;
+    feedLastSent=now;
+    const top=ranking().slice(0,15).map(p=>[p.name,p.lv]);
+    const payload=JSON.stringify({t:'state',scores:top,active:now,win:feedWin});
+    fetch('https://ntfy.sh/'+FEED_TOPIC,{method:'POST',body:payload}).catch(function(){});
+  }catch(e){}
+}
 drawBtn.addEventListener('click',()=>{beat();draw();});
 skipBtn.addEventListener('click',()=>{beat();draw();});
 wonBtn.addEventListener('click',()=>{
@@ -718,6 +733,8 @@ wonBtn.addEventListener('click',()=>{
   const s=scores[currentPlayer]||(scores[currentPlayer]={lv:0,played:0});
   s.lv++;saveScores();syncPlayer(currentPlayer);
   try{localStorage.setItem('hf404_lastwin',JSON.stringify({name:currentPlayer,lv:s.lv,ts:Date.now()}));}catch(e){}
+  feedWin={name:currentPlayer,lv:s.lv,ts:Date.now()};
+  publishState(true);
   beat();
   renderBoard(boardPage,20,null);
   updateScore();
@@ -726,6 +743,7 @@ wonBtn.addEventListener('click',()=>{
 
 /* ===== fin del turno por tiempo ===== */
 function endTurn(){
+  publishState(true);
   clearTimeout(lvlT);lvlfx.classList.remove('show');lvlfx.innerHTML='';
   wonBtn.disabled=skipBtn.disabled=drawBtn.disabled=false;
   const hd=document.getElementById('helpdlg');if(hd&&hd.open)hd.close();

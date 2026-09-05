@@ -118,7 +118,7 @@ const TOP=parseInt(Q.get('top'))||10;
 const LS='hf404_scores_v1';
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-function load(){try{return JSON.parse(localStorage.getItem(LS)||'{}')||{}}catch(e){return{}}}
+function load(){if(mirror)return mirror.scores;try{return JSON.parse(localStorage.getItem(LS)||'{}')||{}}catch(e){return{}}}
 
 /* Tabla de muestra: SOLO para previews con ?demo=1 (en la LED siempre datos reales). */
 const DEMO=[['Satoshi N.',21],['Anonymous',17],['Steve J.',14],['Grace H.',11],
@@ -182,7 +182,7 @@ const CFG={
 const vR=document.getElementById('vRank'),vP=document.getElementById('vPlaca'),vW=document.getElementById('vWin');
 let mode='placa',modeUntil=0,prevWasRank=false,lastWinShown=0,postWinRankUntil=0;
 
-function isActive(){try{return Date.now()-(parseInt(localStorage.getItem('hf404_active'))||0)<CFG.activeVentana}catch(e){return false}}
+function isActive(){if(mirror)return (Date.now()-mirror.rx)<CFG.activeVentana;try{return Date.now()-(parseInt(localStorage.getItem('hf404_active'))||0)<CFG.activeVentana}catch(e){return false}}
 function hasReal(){return ranking().length>0||DEMO_MODE==='1';}
 
 function setView(which){
@@ -194,6 +194,7 @@ function setView(which){
 function enter(m,dur){mode=m;modeUntil=Date.now()+dur;setView(m);}
 
 function checkWin(){
+  if(pendingWin){var pw=pendingWin;pendingWin=null;lastWinShown=pw.ts;playWin(pw);return true;}
   try{
     const w=JSON.parse(localStorage.getItem('hf404_lastwin')||'null');
     if(w&&w.ts>lastWinShown&&Date.now()-w.ts<15000){
@@ -239,6 +240,43 @@ function tick(){
 }
 enter('placa',2000);
 setInterval(tick,400);
+
+/* ===== FEED desde el tótem (otra PC) vía relay ntfy.sh — solo nombres y niveles ===== */
+const FEED_TOPIC='hf404-bigcheese-x7k2m9q4';
+const FEED_ON=Q.get('feed')!=='off';
+let mirror=null,pendingWin=null,lastFeedWinTs=0;
+function applyFeed(msg,inicial){
+  try{
+    var d=JSON.parse(msg);
+    if(d&&d.t==='state'&&d.scores){
+      var sc={};
+      for(var i=0;i<d.scores.length;i++){sc[d.scores[i][0]]={lv:d.scores[i][1],played:0,t:''};}
+      mirror={scores:sc,rx:Date.now()};
+      if(d.win&&d.win.ts&&d.win.ts!==lastFeedWinTs){
+        lastFeedWinTs=d.win.ts;
+        if(!inicial)pendingWin=d.win;
+      }
+      if(mode==='rank')render();
+    }
+  }catch(e){}
+}
+function feedPoll(rango,inicial){
+  fetch('https://ntfy.sh/'+FEED_TOPIC+'/json?poll=1&since='+rango).then(function(r){return r.text()}).then(function(t){
+    var lines=t.trim().split('\n');
+    for(var i=lines.length-1;i>=0;i--){
+      try{var e=JSON.parse(lines[i]);if(e.event==='message'){applyFeed(e.message,inicial);break;}}catch(x){}
+    }
+  }).catch(function(){});
+}
+if(FEED_ON){
+  feedPoll('12h',true);
+  try{
+    var es=new EventSource('https://ntfy.sh/'+FEED_TOPIC+'/sse');
+    es.onmessage=function(ev){try{var e=JSON.parse(ev.data);if(e.event==='message')applyFeed(e.message,false);}catch(x){}};
+    es.onerror=function(){};
+  }catch(e){}
+  setInterval(function(){feedPoll('2m',false);},15000);
+}
 
 /* ===== datos frescos: evento de storage (misma compu) + refresco periódico ===== */
 window.addEventListener('storage',e=>{
