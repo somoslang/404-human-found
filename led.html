@@ -63,6 +63,15 @@ body{font-family:var(--sans);background:var(--base);color:var(--ink);
 .placa-fallback .cta2{background:var(--ink);color:#fff;border-radius:99px;padding:1.6vmin 4vmin;font-weight:700;
   letter-spacing:.14em;text-transform:uppercase;font-size:2.2vmin;}
 
+/* ===== vista INVITACIÓN (placa Level Up + jugá en el tótem) ===== */
+.inv{display:flex;flex-direction:column;align-items:center;gap:2vmin;text-align:center;}
+.inv-ilus svg{width:46vmin;height:auto;display:block;margin:-3vmin 0 -5vmin;animation:invbob 1.1s steps(2,end) infinite;}
+@keyframes invbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2%)}}
+.inv-cta{background:var(--ink);color:#fff;border-radius:99px;padding:2.2vmin 6vmin;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;font-size:3.6vmin;}
+.inv-sub{font-size:2.6vmin;font-weight:600;color:var(--ink2);}
+@media (prefers-reduced-motion:reduce){.inv-ilus svg{animation:none;}}
+
 /* ===== vista CELEBRACIÓN (level up en la LED) ===== */
 #vWin{transition-duration:.35s;}
 .winbox{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;overflow:hidden;
@@ -104,6 +113,14 @@ body{font-family:var(--sans);background:var(--base);color:var(--ink);
       <path d="M832 0 A76 76 0 0 0 832 152 Z" fill="#fff"/>
     </svg>
     <div class="cta2">Jugá en el tótem 🧀</div>
+  </div>
+</section>
+
+<section class="view" id="vInvite">
+  <div class="inv">
+    <div class="inv-ilus" id="invIlus"></div>
+    <div class="inv-cta">Jugá en el tótem 🧀</div>
+    <div class="inv-sub">Adiviná tu carta · Subí de nivel · Premios para el top 3 🎁</div>
   </div>
 </section>
 
@@ -177,18 +194,21 @@ const CFG={
   idleRank:(parseInt(Q.get('idlerank'))||8)*1000,
   idlePlaca:(parseInt(Q.get('idleplaca'))||50)*1000,
   winMs:(parseInt(Q.get('win'))||5)*1000,
+  inviteOn:(parseInt(Q.get('invite'))||7)*1000,
   activeVentana:3*60*1000
 };
-const vR=document.getElementById('vRank'),vP=document.getElementById('vPlaca'),vW=document.getElementById('vWin');
-let mode='placa',modeUntil=0,prevWasRank=false,lastWinShown=0,postWinRankUntil=0;
+const vR=document.getElementById('vRank'),vP=document.getElementById('vPlaca'),vW=document.getElementById('vWin'),vI=document.getElementById('vInvite');
+let mode='placa',modeUntil=0,seqIdx=0,lastWinShown=0;
+try{var _il=document.getElementById('lvlIlusTpl');if(_il)document.getElementById('invIlus').innerHTML=_il.innerHTML;}catch(e){}
 
 function isActive(){if(mirror)return (Date.now()-mirror.rx)<CFG.activeVentana;try{return Date.now()-(parseInt(localStorage.getItem('hf404_active'))||0)<CFG.activeVentana}catch(e){return false}}
 function hasReal(){return ranking().length>0||DEMO_MODE==='1';}
 
 function setView(which){
-  [vR,vP,vW].forEach(v=>v.classList.remove('on'));
+  [vR,vP,vW,vI].forEach(v=>v.classList.remove('on'));
   if(which==='rank'){render();void vR.offsetWidth;vR.classList.add('on');}
   else if(which==='placa'){vP.classList.add('on');}
+  else if(which==='invite'){vI.classList.add('on');}
   else if(which==='win'){vW.classList.add('on');}
 }
 function enter(m,dur){mode=m;modeUntil=Date.now()+dur;setView(m);}
@@ -219,24 +239,19 @@ function playWin(w){
       <div class="win-logo">${logo?logo.innerHTML:''}</div>
     </div>`;
   enter('win',CFG.winMs);
-  postWinRankUntil=Date.now()+CFG.winMs+15000;
 }
 
 function tick(){
   if(mode!=='win'&&checkWin())return;
   if(Date.now()<modeUntil)return;
-  if(mode==='win'){enter('rank',15000);prevWasRank=true;return;}
-  if(Date.now()<postWinRankUntil&&mode==='rank'){enter('placa',CFG.placaOn);prevWasRank=false;return;}
-  const activo=isActive();
-  if(activo&&hasReal()){
-    if(prevWasRank){enter('placa',CFG.placaOn);prevWasRank=false;}
-    else{enter('rank',CFG.rankOn);prevWasRank=true;}
-  }else if(hasReal()){
-    if(prevWasRank){enter('placa',CFG.idlePlaca);prevWasRank=false;}
-    else{enter('rank',CFG.idleRank);prevWasRank=true;}
-  }else{
-    enter('placa',60000);prevWasRank=false;
-  }
+  if(mode==='win'){enter('rank',15000);seqIdx=0;return;}
+  var seq;
+  if(isActive()&&hasReal())seq=[['rank',CFG.rankOn],['placa',CFG.placaOn],['invite',CFG.inviteOn]];
+  else if(hasReal())seq=[['placa',CFG.idlePlaca],['invite',CFG.inviteOn],['rank',CFG.idleRank]];
+  else seq=[['placa',30000],['invite',CFG.inviteOn]];
+  var paso=seq[seqIdx%seq.length];seqIdx++;
+  if(paso[0]===mode){paso=seq[seqIdx%seq.length];seqIdx++;}
+  enter(paso[0],paso[1]);
 }
 enter('placa',2000);
 setInterval(tick,400);
