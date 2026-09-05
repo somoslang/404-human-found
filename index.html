@@ -15,6 +15,11 @@
   *{margin:0;padding:0;box-sizing:border-box;}
   html{scroll-behavior:smooth;}
   body{font-family:var(--sans);background:var(--base);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased;}
+  /* tótem táctil: sin zoom por doble tap ni selección/arrastre en pulsaciones largas */
+  html,body{touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+  body{user-select:none;-webkit-user-select:none;}
+  input,textarea{user-select:text;-webkit-user-select:text;}
+  img{-webkit-user-drag:none;}
   ::selection{background:var(--yel);color:var(--ink);}
   button{font-family:inherit;cursor:pointer;}
   :focus-visible{outline:2.5px solid var(--ink);outline-offset:2px;border-radius:4px;}
@@ -667,17 +672,10 @@ try{
   esReset.onerror=function(){};
 }catch(e){}
 (function(){
-  var n=0,t0=0;
-  document.addEventListener('DOMContentLoaded',function(){});
-  var el=document.querySelector('.hero h1');
-  if(!el)return;
-  el.addEventListener('click',function(){
-    var now=Date.now();if(now-t0>3000)n=0;
-    t0=now;n++;
-    if(n>=7){n=0;
-      if(confirm('¿Resetear la base del juego? Se borran puntajes y contactos de este tótem.'))wipeGame();
-    }
-  });
+  /* kiosco: la pulsación larga en Windows abre menú contextual / arrastra imágenes
+     y deja la pantalla "muda" — bloqueados (el reset queda solo vía relay) */
+  document.addEventListener('contextmenu',function(e){e.preventDefault();});
+  document.addEventListener('dragstart',function(e){e.preventDefault();});
 })();
 window.addEventListener('online',syncFlush);
 const normName=s=>s.trim().replace(/\s+/g,' ');
